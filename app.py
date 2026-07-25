@@ -1,23 +1,21 @@
 import os
 import streamlit as st
-import google.generativeai as genai
+from groq import Groq
 from langchain_community.document_loaders import TextLoader
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_community.embeddings import HuggingFaceEmbeddings
 from langchain_community.vectorstores import FAISS
 
-st.set_page_config(page_title="Alura Agente - RAG Gemini", page_icon="🤖")
+st.set_page_config(page_title="Alura Agente - RAG", page_icon="🤖")
 
-st.title("🤖 Alura Agente: Consultas con Gemini")
-st.caption("Asistente virtual RAG impulsado por Google Gemini para responder dudas técnicas.")
+st.title("🤖 Alura Agente: Consultas de Ingeniería")
+st.caption("Asistente virtual RAG impulsado por Llama 3 (vía Groq) para responder dudas técnicas.")
 
-# Obtener API Key
-api_key = st.secrets.get("GEMINI_API_KEY") or os.environ.get("GEMINI_API_KEY")
+# Obtener API Key de Groq
+api_key = st.secrets.get("GROQ_API_KEY") or os.environ.get("GROQ_API_KEY")
 
 if not api_key:
-    st.warning("⚠️ No se encontró la API Key de Gemini. Configúrala en los Secrets de Streamlit.")
-else:
-    genai.configure(api_key=api_key)
+    st.warning("⚠️ No se encontró GROQ_API_KEY en los Secrets de Streamlit.")
 
 @st.cache_resource
 def inicializar_vectorstore():
@@ -59,43 +57,39 @@ st.write("")
 pregunta = st.text_input("Escribe tu pregunta sobre la guía de ingeniería:", key="query")
 
 if pregunta:
-    # 1. Recuperar contexto con FAISS
     resultados = vectorstore.similarity_search(pregunta, k=2)
     contexto = "\n\n".join([doc.page_content for doc in resultados])
 
     if api_key:
-        with st.spinner("Gemini está redactando la respuesta..."):
+        with st.spinner("Procesando respuesta con Llama 3..."):
             try:
-                # Inicializar modelo Gemini con la SDK oficial
-                model = genai.GenerativeModel("gemini-1.5-flash")
+                client = Groq(api_key=api_key)
                 
-                prompt = f"""Eres un asistente técnico de ingeniería de Santos Pegasus Soluciones.
-Responde de manera precisa, clara y profesional a la pregunta del usuario utilizando ÚNICAMENTE la siguiente información de contexto:
-
-Contexto:
-{contexto}
-
-Pregunta del usuario:
-{pregunta}
-
-Respuesta:"""
-
-                response = model.generate_content(prompt)
+                response = client.chat.completions.create(
+                    model="llama-3.1-8b-instant",
+                    messages=[
+                        {
+                            "role": "system",
+                            "content": "Eres un asistente técnico de ingeniería de Santos Pegasus Soluciones. Responde de manera precisa, clara y profesional utilizando ÚNICAMENTE la información dada en el contexto."
+                        },
+                        {
+                            "role": "user",
+                            "content": f"Contexto:\n{contexto}\n\nPregunta: {pregunta}"
+                        }
+                    ],
+                    temperature=0.2
+                )
 
                 st.subheader("🤖 Respuesta del Agente:")
-                st.write(response.text)
+                st.write(response.choices[0].message.content)
 
                 with st.expander("🔍 Ver contexto de origen (RAG)"):
                     st.info(contexto)
 
             except Exception as e:
-                if "429" in str(e) or "RESOURCE_EXHAUSTED" in str(e):
-                    st.warning("⚠️ Límite de cuota alcanzado temporalmente. Se muestra la búsqueda directa:")
-                else:
-                    st.error(f"Error de conexión con Gemini: {e}")
-                
+                st.error(f"Error al conectar con la IA: {e}")
                 st.subheader("📌 Respuesta directa (Búsqueda RAG):")
                 st.info(contexto)
     else:
-        st.subheader("📌 Contexto encontrado (Modo Sin API Key):")
+        st.subheader("📌 Contexto encontrado (Búsqueda RAG):")
         st.info(contexto)
