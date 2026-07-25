@@ -1,6 +1,6 @@
 import os
 import streamlit as st
-from google import genai
+import google.generativeai as genai
 from langchain_community.document_loaders import TextLoader
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_community.embeddings import HuggingFaceEmbeddings
@@ -11,11 +11,13 @@ st.set_page_config(page_title="Alura Agente - RAG Gemini", page_icon="🤖")
 st.title("🤖 Alura Agente: Consultas con Gemini")
 st.caption("Asistente virtual RAG impulsado por Google Gemini para responder dudas técnicas.")
 
-# Obtener API Key desde Secrets de Streamlit o variables de entorno
+# Obtener API Key
 api_key = st.secrets.get("GEMINI_API_KEY") or os.environ.get("GEMINI_API_KEY")
 
 if not api_key:
     st.warning("⚠️ No se encontró la API Key de Gemini. Configúrala en los Secrets de Streamlit.")
+else:
+    genai.configure(api_key=api_key)
 
 @st.cache_resource
 def inicializar_vectorstore():
@@ -62,9 +64,11 @@ if pregunta:
     contexto = "\n\n".join([doc.page_content for doc in resultados])
 
     if api_key:
-        with st.spinner("Gemini está consultando la documentación..."):
+        with st.spinner("Gemini está redactando la respuesta..."):
             try:
-                client = genai.Client(api_key=api_key)
+                # Inicializar modelo Gemini con la SDK oficial
+                model = genai.GenerativeModel("gemini-1.5-flash")
+                
                 prompt = f"""Eres un asistente técnico de ingeniería de Santos Pegasus Soluciones.
 Responde de manera precisa, clara y profesional a la pregunta del usuario utilizando ÚNICAMENTE la siguiente información de contexto:
 
@@ -76,10 +80,7 @@ Pregunta del usuario:
 
 Respuesta:"""
 
-                response = client.models.generate_content(
-                    model='gemini-2.5-flash',
-                    contents=prompt
-                )
+                response = model.generate_content(prompt)
 
                 st.subheader("🤖 Respuesta del Agente:")
                 st.write(response.text)
@@ -89,9 +90,9 @@ Respuesta:"""
 
             except Exception as e:
                 if "429" in str(e) or "RESOURCE_EXHAUSTED" in str(e):
-                    st.warning("⚠️ Se alcanzó el límite temporal de cuota de la API de Gemini. Te mostramos el resultado directo obtenido de la base de conocimiento:")
+                    st.warning("⚠️ Límite de cuota alcanzado temporalmente. Se muestra la búsqueda directa:")
                 else:
-                    st.error(f"Ocurrió una observación al consultar la IA: {e}")
+                    st.error(f"Error de conexión con Gemini: {e}")
                 
                 st.subheader("📌 Respuesta directa (Búsqueda RAG):")
                 st.info(contexto)
