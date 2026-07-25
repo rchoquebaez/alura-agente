@@ -19,13 +19,12 @@ if not api_key:
 
 @st.cache_resource
 def inicializar_vectorstore():
-    # Cargar documento PDF en lugar de TXT
-    loader = PyPDFLoader("data/data_documento_santos_pegasus.pdf")
+    loader = PyPDFLoader("data/documento_santos_pegasus.pdf") 
     documents = loader.load()
     
     text_splitter = RecursiveCharacterTextSplitter(
-        chunk_size=150,
-        chunk_overlap=20,
+        chunk_size=500,       
+        chunk_overlap=50,       
         separators=["\n\n", "\n", " "]
     )
     docs = text_splitter.split_documents(documents)
