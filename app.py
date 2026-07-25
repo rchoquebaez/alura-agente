@@ -11,7 +11,7 @@ st.set_page_config(page_title="Alura Agente - RAG Gemini", page_icon="🤖")
 st.title("🤖 Alura Agente: Consultas con Gemini")
 st.caption("Asistente virtual RAG impulsado por Google Gemini para responder dudas técnicas.")
 
-# Obtener API Key de Secrets o variable de entorno
+# Obtener API Key desde Secrets de Streamlit o variables de entorno
 api_key = st.secrets.get("GEMINI_API_KEY") or os.environ.get("GEMINI_API_KEY")
 
 if not api_key:
@@ -62,7 +62,7 @@ if pregunta:
     contexto = "\n\n".join([doc.page_content for doc in resultados])
 
     if api_key:
-        with st.spinner("Gemini está redactando la respuesta..."):
+        with st.spinner("Gemini está consultando la documentación..."):
             try:
                 client = genai.Client(api_key=api_key)
                 prompt = f"""Eres un asistente técnico de ingeniería de Santos Pegasus Soluciones.
@@ -77,7 +77,7 @@ Pregunta del usuario:
 Respuesta:"""
 
                 response = client.models.generate_content(
-                    model='gemini-2.0-flash',
+                    model='gemini-2.5-flash',
                     contents=prompt
                 )
 
@@ -88,7 +88,13 @@ Respuesta:"""
                     st.info(contexto)
 
             except Exception as e:
-                st.error(f"Error al consultar Gemini: {e}")
+                if "429" in str(e) or "RESOURCE_EXHAUSTED" in str(e):
+                    st.warning("⚠️ Se alcanzó el límite temporal de cuota de la API de Gemini. Te mostramos el resultado directo obtenido de la base de conocimiento:")
+                else:
+                    st.error(f"Ocurrió una observación al consultar la IA: {e}")
+                
+                st.subheader("📌 Respuesta directa (Búsqueda RAG):")
+                st.info(contexto)
     else:
         st.subheader("📌 Contexto encontrado (Modo Sin API Key):")
-        st.write(contexto)
+        st.info(contexto)
