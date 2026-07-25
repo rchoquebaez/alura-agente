@@ -1,0 +1,13 @@
+﻿SANTOS PEGASUS SOLUCIONES - GUIA OFICIAL DE INGENIERIA
+
+1. STACK TECNOLOGICO BACK-END:
+- El lenguaje principal es Python 3.11+.
+- Framework autorizado: FastAPI.
+- Base de datos relacional: PostgreSQL 15 en OCI.
+
+2. ARQUITECTURA Y SEGURIDAD:
+- Usar Arquitectura Hexagonal.
+- Variables de entorno en archivo .env (nunca subir al repositorio).
+
+3. SOPORTE:
+- Correo: soporte.dev@santospegasus.com
