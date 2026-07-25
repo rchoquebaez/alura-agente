@@ -1,15 +1,15 @@
 import os
 import streamlit as st
 from groq import Groq
-from langchain_community.document_loaders import PyPDFLoader
+from langchain_community.document_loaders import PyPDFDirectoryLoader
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_community.embeddings import HuggingFaceEmbeddings
 from langchain_community.vectorstores import FAISS
 
-st.set_page_config(page_title="Alura Agente - RAG PDF", page_icon="🤖")
+st.set_page_config(page_title="Alura Agente - RAG Multi-PDF", page_icon="🤖")
 
 st.title("🤖 Alura Agente: Consultas de Ingeniería")
-st.caption("Asistente virtual RAG impulsado por Llama 3 (vía Groq) para responder dudas desde PDF.")
+st.caption("Asistente virtual RAG impulsado por Llama 3 (vía Groq) para responder dudas sobre documentación técnica.")
 
 # Obtener API Key de Groq
 api_key = st.secrets.get("GROQ_API_KEY") or os.environ.get("GROQ_API_KEY")
@@ -19,12 +19,13 @@ if not api_key:
 
 @st.cache_resource
 def inicializar_vectorstore():
-    loader = PyPDFLoader("data/documento_santos_pegasus.pdf") 
+    # PyPDFDirectoryLoader lee TODOS los PDF que estén en la carpeta 'data'
+    loader = PyPDFDirectoryLoader("data/")
     documents = loader.load()
     
     text_splitter = RecursiveCharacterTextSplitter(
-        chunk_size=500,       
-        chunk_overlap=50,       
+        chunk_size=500,
+        chunk_overlap=50,
         separators=["\n\n", "\n", " "]
     )
     docs = text_splitter.split_documents(documents)
@@ -57,11 +58,11 @@ st.write("")
 pregunta = st.text_input("Escribe tu pregunta sobre la guía de ingeniería:", key="query")
 
 if pregunta:
-    resultados = vectorstore.similarity_search(pregunta, k=2)
+    resultados = vectorstore.similarity_search(pregunta, k=3)
     contexto = "\n\n".join([doc.page_content for doc in resultados])
 
     if api_key:
-        with st.spinner("Procesando respuesta desde el PDF con Llama 3..."):
+        with st.spinner("Procesando respuesta desde la documentación PDF con Llama 3..."):
             try:
                 client = Groq(api_key=api_key)
                 
@@ -70,7 +71,7 @@ if pregunta:
                     messages=[
                         {
                             "role": "system",
-                            "content": "Eres un asistente técnico de ingeniería de Santos Pegasus Soluciones. Responde de manera precisa, clara y profesional utilizando ÚNICAMENTE la información dada en el contexto extraído del PDF."
+                            "content": "Eres un asistente técnico de ingeniería de Santos Pegasus Soluciones. Responde de manera precisa, clara y profesional utilizando ÚNICAMENTE la información dada en el contexto extraído de los manuales en PDF."
                         },
                         {
                             "role": "user",
