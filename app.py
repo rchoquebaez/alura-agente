@@ -11,31 +11,28 @@ st.caption("Asistente virtual RAG para resolver dudas sobre políticas y arquite
 
 @st.cache_resource
 def inicializar_vectorstore():
-    # 1. Cargar el documento
     loader = TextLoader("data/documento_santos_pegasus.txt", encoding="utf-8")
     documents = loader.load()
     
-    # 2. Dividir el texto en fragmentos pequeños (Chunks)
+    # Separar específicamente por saltos de línea doble para aislar secciones
     text_splitter = RecursiveCharacterTextSplitter(
-        chunk_size=200,      # Tamaño máximo de caracteres por fragmento
-        chunk_overlap=30     # Traslape entre fragmentos para no perder contexto
+        chunk_size=120,
+        chunk_overlap=0,
+        separators=["\n\n", "\n", " "]
     )
     docs = text_splitter.split_documents(documents)
     
-    # 3. Crear embeddings y vectorstore
     embeddings = HuggingFaceEmbeddings(model_name="all-MiniLM-L6-v2")
     vectorstore = FAISS.from_documents(docs, embeddings)
     return vectorstore
 
-# Cargar base vectorial
 vectorstore = inicializar_vectorstore()
 
-# Interfaz de usuario
 pregunta = st.text_input("Escribe tu pregunta sobre la guía de ingeniería:")
 
 if pregunta:
-    # Buscar los 2 fragmentos más relevantes (k=2)
-    resultados = vectorstore.similarity_search(pregunta, k=2)
+    # k=1 obliga al modelo a traer ÚNICAMENTE la coincidencia más relevante
+    resultados = vectorstore.similarity_search(pregunta, k=1)
     
     st.subheader("💡 Información relevante encontrada:")
     for i, doc in enumerate(resultados, 1):
