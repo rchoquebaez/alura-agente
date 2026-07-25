@@ -17,30 +17,24 @@ api_key = st.secrets.get("GROQ_API_KEY") or os.environ.get("GROQ_API_KEY")
 if not api_key:
     st.warning("⚠️ No se encontró GROQ_API_KEY en los Secrets de Streamlit.")
 
-# Botón para forzar la reindexación si agregas o cambias PDFs en data/
-with st.sidebar:
-    st.header("⚙️ Configuración del Agente")
-    if st.button("🔄 Recargar Memoria de PDFs", use_container_width=True):
-        st.cache_resource.clear()
-        st.success("¡Caché de documentos limpiada exitosamente!")
-        st.rerun()
-
 @st.cache_resource
 def inicializar_vectorstore():
     # PyPDFDirectoryLoader lee TODOS los archivos .pdf dentro de la carpeta 'data/'
     loader = PyPDFDirectoryLoader("data/")
     documents = loader.load()
     
-    # Chunking balanceado para evitar fragmentación de oraciones clave
+    # Fragmentador ajustado para conservar contexto completo
     text_splitter = RecursiveCharacterTextSplitter(
-        chunk_size=600,
-        chunk_overlap=60,
-        separators=["\n\n", "\n", " "]
+        chunk_size=700,
+        chunk_overlap=100,
+        separators=["\n\n", "\n", ".", " "]
     )
     docs = text_splitter.split_documents(documents)
     
-    # Modelo de embeddings de HuggingFace y almacenamiento vectorial en FAISS
-    embeddings = HuggingFaceEmbeddings(model_name="all-MiniLM-L6-v2")
+    # Modelo de embeddings multilingüe en español para búsquedas precisas
+    embeddings = HuggingFaceEmbeddings(
+        model_name="sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2"
+    )
     vectorstore = FAISS.from_documents(docs, embeddings)
     return vectorstore
 
@@ -69,8 +63,8 @@ st.write("")
 pregunta = st.text_input("Escribe tu pregunta sobre la guía de ingeniería:", key="query")
 
 if pregunta:
-    # Aumentamos k=6 para recuperar suficiente contexto cruzando varios PDFs
-    resultados = vectorstore.similarity_search(pregunta, k=6)
+    # Búsqueda semántica con k=8 para rastrear múltiples PDFs
+    resultados = vectorstore.similarity_search(pregunta, k=8)
     contexto = "\n\n---\n\n".join([doc.page_content for doc in resultados])
 
     if api_key:
@@ -87,7 +81,7 @@ if pregunta:
                                 "Eres un asistente técnico de ingeniería de Santos Pegasus Soluciones. "
                                 "Responde de manera precisa, clara, directa y profesional utilizando ÚNICAMENTE "
                                 "la información extraída del contexto proporcionado de los documentos PDF. "
-                                "Si la respuesta está en el contexto, indícala explícitamente sin hacer suposiciones ni sugerir consultar otros manuales."
+                                "Si la respuesta está en el contexto, indícala explícitamente sin hacer suposiciones."
                             )
                         },
                         {
