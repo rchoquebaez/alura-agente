@@ -8,7 +8,7 @@ from langchain_community.vectorstores import FAISS
 
 st.set_page_config(page_title="Alura Agente - RAG Multi-PDF", page_icon="🤖", layout="wide")
 
-st.title("🤖 Alura Agente: Consultas de Ingeniería")
+st.title("🤖 Alura Agente: Consultas de Santos Pegasus Soluciones")
 st.caption("Asistente virtual RAG impulsado por Llama 3 (vía Groq) para responder dudas sobre documentación técnica en PDF.")
 
 # Obtener API Key de Groq desde Secrets de Streamlit o variables de entorno local
