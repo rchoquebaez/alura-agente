@@ -15,10 +15,10 @@ Asistente virtual inteligente basado en una arquitectura **RAG (Retrieval-Augmen
 El agente implementa un flujo RAG optimizado para procesar documentos PDF y generar respuestas precisas sin alucinaciones:
 
 ### Componentes Clave:
-1. **Document Loading:** Carga del documento PDF oficial desde la carpeta `data/` usando `PyPDFLoader`.
-2. **Text Splitting:** Fragmentación del contenido (`chunk_size=500`, `chunk_overlap=50`) para asegurar coherencia contextual.
-3. **Vector Embeddings & Storage:** Generación de embeddings con HuggingFace (`all-MiniLM-L6-v2`) e indexación vectorial en memoria con **FAISS**.
-4. **Retrieval & Generation:** Recuperación por similitud semántica integrada al modelo **Llama 3.1 8B Instant** a través de la infraestructura de alta velocidad de **Groq**.
+1. **Multi-Document Loading:** Carga masiva e indexación de todos los archivos PDF presentes en la carpeta `data/` usando `PyPDFDirectoryLoader`.
+2. **Text Splitting:** Fragmentación balanceada (`chunk_size=700`, `chunk_overlap=100`) para conservar la coherencia contextual de párrafos técnicos.
+3. **Multilingual Vector Embeddings:** Generación de embeddings con el modelo multilingüe en español `sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2` e indexación vectorial en memoria con **FAISS**.
+4. **Retrieval & Generation:** Búsqueda por similitud semántica amplia (`k=8`) integrada al LLM **Llama 3.1 8B Instant** a través de la infraestructura ultra-rápida de **Groq**.
 5. **Frontend:** Interfaz web interactiva e intuitiva construida con **Streamlit**.
 
 ---
@@ -29,7 +29,7 @@ El agente implementa un flujo RAG optimizado para procesar documentos PDF y gene
 * **Framework Web:** Streamlit
 * **Orquestación RAG:** LangChain
 * **Base de Datos Vectorial:** FAISS (Facebook AI Similarity Search)
-* **Modelos de Embeddings:** `all-MiniLM-L6-v2` (HuggingFace)
+* **Modelos de Embeddings:** `paraphrase-multilingual-MiniLM-L12-v2` (HuggingFace)
 * **LLM Inferencia:** Llama 3.1 8B Instant (vía Groq API)
 * **Lector PDF:** PyPDF
 
@@ -41,9 +41,9 @@ El agente implementa un flujo RAG optimizado para procesar documentos PDF y gene
 * **Pregunta:** `¿Cuál es la base de datos del proyecto?`
 * **Respuesta del Agente:** *"La base de datos relacional del proyecto es PostgreSQL 15, alojada en Oracle Cloud Infrastructure (OCI)."*
 
-### 2. Consulta sobre Arquitectura
+### 2. Consulta sobre Stack Back-End
 * **Pregunta:** `¿Cuál es el stack backend y lenguaje principal?`
-* **Respuesta del Agente:** *"El backend está desarrollado en Python 3.11+ utilizando FastAPI para servicios RESTful y utiliza Arquitectura Hexagonal."*
+* **Respuesta del Agente:** *"El stack backend principal es Java 17+ con Spring Boot 3+, Spring Security y Spring Data JPA. El lenguaje principal es Java."*
 
 ### 3. Consulta sobre Soporte
 * **Pregunta:** `¿Cuál es el correo de contacto para soporte?`
@@ -57,5 +57,5 @@ Para ejecutar el proyecto en tu máquina local:
 
 1. **Clonar el repositorio:**
    ```bash
-   git clone https://github.com/rchoquebaez/alura-agente.git
+   git clone [https://github.com/rchoquebaez/alura-agente.git](https://github.com/rchoquebaez/alura-agente.git)
    cd alura-agente
