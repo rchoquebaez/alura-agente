@@ -6,37 +6,48 @@ from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_community.embeddings import HuggingFaceEmbeddings
 from langchain_community.vectorstores import FAISS
 
-st.set_page_config(page_title="Alura Agente - RAG Multi-PDF", page_icon="🤖")
+st.set_page_config(page_title="Alura Agente - RAG Multi-PDF", page_icon="🤖", layout="wide")
 
 st.title("🤖 Alura Agente: Consultas de Ingeniería")
-st.caption("Asistente virtual RAG impulsado por Llama 3 (vía Groq) para responder dudas sobre documentación técnica.")
+st.caption("Asistente virtual RAG impulsado por Llama 3 (vía Groq) para responder dudas sobre documentación técnica en PDF.")
 
-# Obtener API Key de Groq
+# Obtener API Key de Groq desde Secrets de Streamlit o variables de entorno local
 api_key = st.secrets.get("GROQ_API_KEY") or os.environ.get("GROQ_API_KEY")
 
 if not api_key:
     st.warning("⚠️ No se encontró GROQ_API_KEY en los Secrets de Streamlit.")
 
+# Botón para forzar la reindexación si agregas o cambias PDFs en data/
+with st.sidebar:
+    st.header("⚙️ Configuración del Agente")
+    if st.button("🔄 Recargar Memoria de PDFs", use_container_width=True):
+        st.cache_resource.clear()
+        st.success("¡Caché de documentos limpiada exitosamente!")
+        st.rerun()
+
 @st.cache_resource
 def inicializar_vectorstore():
-    # PyPDFDirectoryLoader lee TODOS los PDF que estén en la carpeta 'data'
+    # PyPDFDirectoryLoader lee TODOS los archivos .pdf dentro de la carpeta 'data/'
     loader = PyPDFDirectoryLoader("data/")
     documents = loader.load()
     
+    # Chunking balanceado para evitar fragmentación de oraciones clave
     text_splitter = RecursiveCharacterTextSplitter(
-        chunk_size=500,
-        chunk_overlap=50,
+        chunk_size=600,
+        chunk_overlap=60,
         separators=["\n\n", "\n", " "]
     )
     docs = text_splitter.split_documents(documents)
     
+    # Modelo de embeddings de HuggingFace y almacenamiento vectorial en FAISS
     embeddings = HuggingFaceEmbeddings(model_name="all-MiniLM-L6-v2")
     vectorstore = FAISS.from_documents(docs, embeddings)
     return vectorstore
 
-vectorstore = inicializar_vectorstore()
+with st.spinner("Indexando documentos PDF desde la carpeta data/..."):
+    vectorstore = inicializar_vectorstore()
 
-# Manejo de estado para consultas rápidas
+# Manejo de estado para preguntas frecuentes
 if "query" not in st.session_state:
     st.session_state.query = ""
 
@@ -58,11 +69,12 @@ st.write("")
 pregunta = st.text_input("Escribe tu pregunta sobre la guía de ingeniería:", key="query")
 
 if pregunta:
-    resultados = vectorstore.similarity_search(pregunta, k=3)
-    contexto = "\n\n".join([doc.page_content for doc in resultados])
+    # Aumentamos k=6 para recuperar suficiente contexto cruzando varios PDFs
+    resultados = vectorstore.similarity_search(pregunta, k=6)
+    contexto = "\n\n---\n\n".join([doc.page_content for doc in resultados])
 
     if api_key:
-        with st.spinner("Procesando respuesta desde la documentación PDF con Llama 3..."):
+        with st.spinner("Procesando respuesta con Llama 3.1..."):
             try:
                 client = Groq(api_key=api_key)
                 
@@ -71,26 +83,31 @@ if pregunta:
                     messages=[
                         {
                             "role": "system",
-                            "content": "Eres un asistente técnico de ingeniería de Santos Pegasus Soluciones. Responde de manera precisa, clara y profesional utilizando ÚNICAMENTE la información dada en el contexto extraído de los manuales en PDF."
+                            "content": (
+                                "Eres un asistente técnico de ingeniería de Santos Pegasus Soluciones. "
+                                "Responde de manera precisa, clara, directa y profesional utilizando ÚNICAMENTE "
+                                "la información extraída del contexto proporcionado de los documentos PDF. "
+                                "Si la respuesta está en el contexto, indícala explícitamente sin hacer suposiciones ni sugerir consultar otros manuales."
+                            )
                         },
                         {
                             "role": "user",
-                            "content": f"Contexto:\n{contexto}\n\nPregunta: {pregunta}"
+                            "content": f"Contexto extraído de los PDFs:\n{contexto}\n\nPregunta del usuario: {pregunta}"
                         }
                     ],
-                    temperature=0.2
+                    temperature=0.1
                 )
 
                 st.subheader("🤖 Respuesta del Agente:")
                 st.write(response.choices[0].message.content)
 
-                with st.expander("🔍 Ver contexto de origen (RAG)"):
+                with st.expander("🔍 Ver fragmentos de contexto recuperados (RAG)"):
                     st.info(contexto)
 
             except Exception as e:
-                st.error(f"Error al conectar con la IA: {e}")
-                st.subheader("📌 Respuesta directa (Búsqueda RAG):")
+                st.error(f"Error al conectar con la API de Groq: {e}")
+                st.subheader("📌 Fragmentos encontrados (Búsqueda RAG):")
                 st.info(contexto)
     else:
-        st.subheader("📌 Contexto encontrado (Búsqueda RAG):")
+        st.subheader("📌 Fragmentos encontrados (Búsqueda RAG):")
         st.info(contexto)
